@@ -1,0 +1,222 @@
+---
+title: "Módulo 5 Procesamiento de datos multivariados"
+author: "Angel Corrales Sotelo"
+date: "2022-10-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1.Realice un análisis de normalidad de las variables continuas para identificar variables normales. Tome en cuenta los puntos que se sugieren a continuación (no son exhaustivos):
+
+## A. Realice la prueba de normalidad de Mardia y la prueba de Anderson Darling para identificar las variables que son normales y detectar posible normalidad multivariada de grupos de variables.
+
+```{r}
+library(MVN)
+
+data = read.csv("mercurio.csv")
+M = subset(data, select = -c(X1,X2))
+
+p = 10        #indica que se trata de dos variables
+# Vector de medias
+X = colMeans(M)
+#Matriz de covarianza
+S = cov(M)
+#Distancia de Mahalanobis
+d2M =  mahalanobis(M,X,S)
+
+#Multinormalidad Test gráfico Q-Q Plot
+plot(qchisq(((1:nrow(M)) - 1/2)/nrow(M),df=p),sort( d2M ) )
+abline(a=0, b=1,col="red")
+
+## Test de Multinomalidad: Método Sesgo y kurtosis de Mardia
+mvn(M,subset = NULL, mvn = "mardia", covariance = FALSE,showOutliers = FALSE)
+```
+
+Variables normales: X4 y X10, según la prueba de Anderson-Darling.
+
+## B. Realiza la prueba de Mardia y Anderson Darling de las variables que sí tuvieron normalidad en los incisos anteriores. Interpreta los resultados obtenidos con base en ambas pruebas y en la interpretación del sesgo y la curtosis de cada una de ellas.
+
+```{r}
+library(MVN)
+
+#data = read.csv("mercurio.csv")
+M = subset(data, select = -c(X1,X2,X3,X5,X6,X7,X8,X9,X11,X12))
+
+p = 2        #indica que se trata de dos variables
+# Vector de medias
+X = colMeans(M)
+#Matriz de covarianza
+S = cov(M)
+#Distancia de Mahalanobis
+d2M =  mahalanobis(M,X,S)
+
+#Multinormalidad Test gráfico Q-Q Plot
+plot(qchisq(((1:nrow(M)) - 1/2)/nrow(M),df=p),sort( d2M ) )
+abline(a=0, b=1,col="red")
+
+## Test de Multinomalidad: Método Sesgo y kurtosis de Mardia
+mvn(M,subset = NULL, mvn = "mardia", covariance = FALSE,showOutliers = FALSE)
+```
+
+La prueba de Anderson-Darling muestra que sí hay normalidad entre los datos.
+
+La normalidad queda aún más clara al realizar los análisis de Mardia Skewness y Mardia Kurtosis al observar que no hay curtosis ni sesgo en los datos.
+
+## C. Haz la gráfica de contorno de la normal multivariada obtenida en el inciso B.
+
+```{r}
+library(mnormt)
+x     <- seq(3, 10, 0.1) 
+y     <- seq(-1, 3, 0.1)
+muX4 = mean(M$X4)
+muX10 = mean(M$X10)
+mu    <- c(muX4, muX10)
+sigma = cov(M)
+#sigma <- matrix(c(1.2, 0, 0, 2.3), nrow=2)
+f     <- function(x, y) dmnorm(cbind(x, y), mu, sigma)
+z     <- outer(x, y, f)
+#create surface plot
+#persp(x, y, z, theta=-30, phi=25, expand=0.6, ticktype='detailed', col = "pink")
+```
+
+```{r}
+#create contour plot
+contour(x, y, z, col = "blue", levels = c(0.01,0.03, 0.05, 0.07, 0.1))
+```
+
+## D. Detecta datos atípicos o influyentes en la normal multivariada encontrada en el inciso B (auxíliate de la distancia de Mahalanobis y del gráfico QQplot multivariado)
+
+```{r}
+x1 = M$X4
+x2 = M$X10
+
+X2 = matrix(c(x1,x2), ncol=2)
+medias = c(mean(x1), mean(x2))
+S2 = cov(X2)
+distancias = mahalanobis(X2, medias, S2)
+distancias
+```
+
+Teniendo que (X - miu)' E^-1 (X - miu) <= Xp^2(alpha). Todas aquellas distancias de mahalanobis que sean menor a Xp^2(alpha) caen dentro del contorno de probabilidad estimado del 99.73% de una distribución normal bivariada
+
+```{r}
+
+alpha = 0.9973
+gl = 2
+qchisq(alpha,gl)
+distancias
+```
+
+Dado que X_2^2(0.9973) = 11.82901
+
+Todas las observaciones caen dentro del contorno de probabilidad estimado, el cual fue elegido para determinar los valores atípicos como los valores alejados a 3 o más desviaciones estándar de la media. Por lo tanto podemos concluir que no hay valores atípicos así como no hay valores atípicos influyentes.
+
+```{r}
+library(MVN)
+
+d2M = sort(distancias)
+
+M = X2
+gl = 2 #indica que se trata de dos variables
+
+plot(qchisq(((1:nrow(M)) - 1/2)/nrow(M),df=gl),sort( d2M ) )
+abline(a=0, b=1,col="red")
+
+```
+
+En la gráfica se aprecia una aparente normalidad multivariada para los datos analizados.
+
+
+# 2. Realice un análisis de componentes principales con la base de datos completa para identificar los factores principales que intervienen en el problema de la contaminación por mercurio de los peces en agua dulce. Tome en cuenta los puntos que se sugieren a continuación (no son exhaustivos):
+
+## A. Justifique por qué es adecuado el uso de componentes principales para analizar la base (haz uso de la matriz de correlaciones)
+
+```{r}
+M = subset(data, select = -c(X1,X2))
+Mcor = cor(M)
+Mcor
+```
+
+Las variables muestran una considerable correlación entre sí, por lo que sería conveniente reducir la dimensionalidad encontrando los componentes principales.
+
+## B.Realiza el análisis de componentes principales y justifica el número de componentes principales apropiados para reducir la dimensión de la base
+
+```{r}
+vP1 = eigen(Mcor)
+vP1
+```
+
+```{r}
+cor = sum(diag(Mcor))
+
+corr = c(rep(cor, 11))
+
+lambdas2 = data.frame(vP1[1])
+proporcion2 = lambdas2/corr 
+proporcion2
+```
+
+```{r}
+cumsum(proporcion2)
+```
+
+El análisis se realizó con la matriz de correlación en lugar de la matriz de varianza-covarianza debido a que los datos necesitan ser escalados.
+
+
+Tras calcular la proporciones acumuladas, podemos concluir que la cantidad apropiada de componentes principales a utilizar es 5, la cual corresponde a una proporción de variable explicada de 0.933 
+
+
+## C. Representa en un gráfico los vectores asociados a las variables y las puntuaciones de las observaciones de las dos primeras componentes
+```{r}
+install.packages("factoextra")
+install.packages("ggplot2")
+```
+
+```{r}
+install.packages("FactoMineR")
+```
+
+```{r}
+library(FactoMineR)
+library(factoextra)
+library(ggplot2) 
+datos=M
+cp3 = PCA(datos)
+fviz_pca_ind(cp3, col.ind = "blue", addEllipses = TRUE, repel = TRUE)
+fviz_screeplot(cp3)
+fviz_contrib(cp3, choice = c("var"))
+```
+
+## Use el siguiente comando 
+```{r}
+M1 = subset(data, select = -c(X1,X2))
+cpa <- prcomp(M1, scale=TRUE)
+```
+
+## Grafica 
+```{r}
+biplot(x = cpa, scale = 0, cex =0.6, col = c("red", "blue"))
+summary(cpa)
+```
+
+## D. Interprete los resultados. Explique brevemente a qué conclusiones llega con su análisis y qué significado tienen los componentes seleccionados en el contexto del problema
+
+El hecho de que se hayan tenido que utilizar hasta 5 componentes principales y al observar los valores correspondientes a cada variable muestra que las variables no muestran una importancia muy dominante ante las demás, siendo todas más o menos relevantes de manera intercambiable entre dichos componentes. Esto puede observarse en la gráfica de arriba en la cual no se logra ver una diferencia considerable entre las variables.
+
+
+# 3. Emite una conclusión general: Une las conclusiones aquí obtenidas con las ya obtenidas en el análisis que ya habías realizada anteriormente, ¿de qué forma te ayuda este nuevo análisis a contestar la pregunta principal del estudio:  
+
+## ¿Cuáles son los principales factores que influyen en el nivel de contaminación por mercurio en los peces de los lagos de Florida? 
+
+Los componentes principales indican la importancia de las variables, de haber sido significativa, pudo ser un buen indicador de las variables que tienen mayor influencia
+
+
+
+## ¿En qué puede facilitar el estudio la normalidad encontrada en un grupo de variables detectadas? 
+
+
+## ¿cómo te ayudan los componentes principales a abordar este problema?
+
