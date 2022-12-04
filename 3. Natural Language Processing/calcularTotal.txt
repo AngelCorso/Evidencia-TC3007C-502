@@ -42,7 +42,8 @@ def precioBebida(comidaElegida):
         "Cerveza barril": 33,
         "Cerveza litro": 80,
         "Michelada 1L": 90,
-        "Michelato 1L": 90
+        "Michelato 1L": 90,
+        "Ninguno": 0
     }
     
     return bebidas[comidaElegida]
@@ -53,7 +54,8 @@ def precioPostre(comidaElegida):
     "Pastel chocolate": 35,
     "Fresas con crema": 35,
     "Gelatina": 20,
-    "Flan": 30
+    "Flan": 30,
+    "Ninguno": 0
     }
     
     return postres[comidaElegida]
@@ -96,12 +98,3 @@ def lambda_handler(event, context):
     }
 
     return response
-
-"""
-def lambda_handler(event, context):
-    # TODO implement
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Hello from Lambda!')
-    }
-"""
